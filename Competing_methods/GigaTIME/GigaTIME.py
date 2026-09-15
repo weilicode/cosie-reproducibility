@@ -5,6 +5,9 @@ import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
 import yaml
+import glob
+import matplotlib.pyplot as plt
+from PIL import Image
 from sklearn.model_selection import train_test_split
 from torch.optim import lr_scheduler
 from tqdm import tqdm
@@ -25,6 +28,7 @@ from torch.utils.data import DataLoader, Subset
 import torch
 import torch.distributed as dist
 import os
+from huggingface_hub import snapshot_download
 from torch.utils.data import DataLoader, DistributedSampler
 from scipy.stats import pearsonr, spearmanr
 from prov_data import *
@@ -32,12 +36,10 @@ from albumentations.augmentations import transforms
 from albumentations.core.composition import Compose, OneOf
 import warnings, os, sys
 from easydict import EasyDict as edict
+import albumentations as geometric
+from torch.utils.data import DataLoader, Dataset
 
-# Suppress specific warnings
 warnings.filterwarnings("ignore")
-
-# Suppress stderr messages (like multiprocessing errors)
-sys.stderr = open(os.devnull, 'w')
 mean = np.array([0.485, 0.456, 0.406])
 std = np.array([0.229, 0.224, 0.225])
 
@@ -59,19 +61,6 @@ print("Seeded. Torch:", torch.__version__, "CUDA:", torch.version.cuda)
 mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
-SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-torch.cuda.manual_seed_all(SEED)
-
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.backends.cudnn.allow_tf32 = False
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-torch.use_deterministic_algorithms(True, warn_only=True)
-
-print("Seeded. Torch:", torch.__version__, "CUDA:", torch.version.cuda)
 
 channel_names = [
     'DAPI',
@@ -110,20 +99,20 @@ def parse_args():
     config.arch = "gigatime"
     config.input_channels = 3
     config.num_classes = 23
-    config.input_w = 256 # 512
-    config.input_h = 256 # 512
+    config.input_w = 256 
+    config.input_h = 256 
     config.patch_suffix = "_he.png"
 
     return config
 
 config = parse_args()
-import albumentations as geometric
+
 val_transform = Compose([
     geometric.Resize(config.input_h, config.input_w),
     transforms.Normalize(),
 ])
 
-from torch.utils.data import DataLoader, Dataset
+
 
 class HEPatchInferenceDataset(Dataset):
     def __init__(self, patch_dir, transform, patch_suffix="_he.png"):
@@ -182,9 +171,7 @@ def plot_inference_patch(idx=0):
     plt.axis("off")
     plt.show()
 
-plot_inference_patch(idx=1222)
 
-from huggingface_hub import snapshot_download
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
@@ -266,7 +253,6 @@ def plot_patch_predictions(idx=0, channels_to_show=None, show_binary=False):
     plt.tight_layout()
     plt.show()
 
-plot_patch_predictions(idx=11, show_binary=True)
 
 def parse_patch_name(patch_name):
     """
@@ -301,8 +287,7 @@ def run_gigatime_inference(
     model.eval()
 
     with torch.no_grad():
-        # pbar = tqdm(total=len(loader), desc="Running GigaTIME inference")
-        pbar = tqdm.tqdm(total=len(loader), desc="Running GigaTIME inference")
+        pbar = tqdm(total=len(loader), desc="Running GigaTIME inference")
 
         for imgs, patch_names in loader:
             imgs = imgs.to(device)
@@ -361,140 +346,11 @@ pred_df = run_gigatime_inference(
     model=model,
     output_dir=prediction_output_dir,
     save_probs=True,
-    save_binary=False,   
+    save_binary=True,   
     threshold=0.5,
     window_size=256
 )
 
 
-print("Number of predicted patches:", len(pred_df))
-
-example_prob = np.load(pred_df.iloc[0]["prob_path"])
-print("Prediction shape:", example_prob.shape)
-print("Min / Max:", example_prob.min(), example_prob.max())
 
 
-import os
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from PIL import Image
-
-
-def stitch_gigatime_predictions_overlap(
-    pred_index_csv,
-    patches_csv=None,
-    num_channels=23,
-    output_npy_path=None,
-    return_count_map=False
-):
-    """
-    Stitch overlapping GigaTIME patch predictions back to a whole-image map.
-
-    Assumes:
-    - patch predictions are shape (C, 256, 256)
-    - patches were extracted with overlap, e.g. patch_size=256, stride=128
-    - overlapping regions are averaged
-    - if patches_csv is provided, edge patches use orig_patch_h / orig_patch_w
-
-    Parameters
-    ----------
-    pred_index_csv : str
-        Path to prediction_index.csv from run_gigatime_inference().
-    patches_csv : str or None, default=None
-        Path to patches.csv from extract_patches_from_jpg().
-    num_channels : int, default=23
-        Number of protein channels.
-    output_npy_path : str or None, default=None
-        Optional output path for stitched map.
-    return_count_map : bool, default=False
-        Whether to also return overlap count map.
-
-    Returns
-    -------
-    stitched_map : np.ndarray
-        Whole-image stitched probability map of shape (C, H, W).
-    count_map : np.ndarray, optional
-        Overlap count map of shape (H, W).
-    """
-    pred_df = pd.read_csv(pred_index_csv)
-
-    if patches_csv is not None and os.path.exists(patches_csv):
-        patch_df = pd.read_csv(patches_csv)
-        pred_df = pred_df.merge(
-            patch_df[["patch_name", "orig_patch_h", "orig_patch_w"]],
-            on="patch_name",
-            how="left"
-        )
-    else:
-        pred_df["orig_patch_h"] = pred_df["patch_h"]
-        pred_df["orig_patch_w"] = pred_df["patch_w"]
-
-    # infer full canvas size from valid patch extents
-    full_h = int((pred_df["y"] + pred_df["orig_patch_h"]).max())
-    full_w = int((pred_df["x"] + pred_df["orig_patch_w"]).max())
-
-    print(f"Canvas size: H={full_h}, W={full_w}, C={num_channels}")
-
-    stitched_sum = np.zeros((num_channels, full_h, full_w), dtype=np.float32)
-    count_map = np.zeros((full_h, full_w), dtype=np.float32)
-
-    for _, row in pred_df.iterrows():
-        x = int(row["x"])
-        y = int(row["y"])
-        valid_h = int(row["orig_patch_h"])
-        valid_w = int(row["orig_patch_w"])
-        prob_path = row["prob_path"]
-
-        pred = np.load(prob_path)   # expected shape: (C, 256, 256)
-
-        if pred.shape[0] != num_channels:
-            raise ValueError(
-                f"Channel mismatch in {prob_path}: "
-                f"expected {num_channels}, got {pred.shape[0]}"
-            )
-
-        if pred.shape[1] < valid_h or pred.shape[2] < valid_w:
-            raise ValueError(
-                f"Prediction smaller than valid patch size in {prob_path}: "
-                f"pred shape {pred.shape[1:]} vs valid size {(valid_h, valid_w)}"
-            )
-
-        # For padded edge patches, only keep the valid top-left region
-        pred_valid = pred[:, :valid_h, :valid_w]
-
-        stitched_sum[:, y:y + valid_h, x:x + valid_w] += pred_valid
-        count_map[y:y + valid_h, x:x + valid_w] += 1.0
-
-    stitched_map = stitched_sum / np.clip(count_map[None, :, :], a_min=1e-8, a_max=None)
-
-    if output_npy_path is not None:
-        os.makedirs(os.path.dirname(output_npy_path), exist_ok=True)
-        np.save(output_npy_path, stitched_map)
-        print(f"Saved stitched map to: {output_npy_path}")
-
-    if return_count_map:
-        return stitched_map, count_map
-    return stitched_map
-
-pred_index_csv = os.path.join(prediction_output_dir, "prediction_index.csv")
-patches_csv = os.path.join(config.patch_dir, "patches.csv")
-stitched_output_path = os.path.join(prediction_output_dir, "stitched_prob_map.npy")
-
-stitched_map, count_map = stitch_gigatime_predictions_overlap(
-    pred_index_csv=pred_index_csv,
-    patches_csv=patches_csv,
-    num_channels=len(common_channel_list),
-    output_npy_path=stitched_output_path,
-    return_count_map=True
-)
-
-print("stitched_map shape:", stitched_map.shape)
-print("count_map shape:", count_map.shape)
-
-
-
-
-
-
-##
