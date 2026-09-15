@@ -3,12 +3,13 @@
 import numpy as np
 import pandas as pd
 import scanpy as sc
-
 from matplotlib import pyplot as plt
 import seaborn as sns
 import muon as mu
 from pathlib import Path
 import os
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 
 adata2_27me3 = sc.read_h5ad('E13_50_3_H3K27me3.h5ad')
@@ -20,8 +21,7 @@ adata2_atac.obsm['spatial'] = adata2_atac.obsm['spatial_local'].copy()
 adata2_rna.obsm['spatial'] = adata2_rna.obsm['spatial_local'].copy()
 adata2_4me3.obsm['spatial'] = adata2_4me3.obsm['spatial_local'].copy()
 
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+
 
 sc.pp.normalize_total(adata2_27me3)
 sc.pp.log1p(adata2_27me3)

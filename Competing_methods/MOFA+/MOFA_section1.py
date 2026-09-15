@@ -1,22 +1,23 @@
 ## Please refer to https://biofam.github.io/MOFA2/ for installation
 
+
 import numpy as np
 import pandas as pd
 import scanpy as sc
-
 from matplotlib import pyplot as plt
 import seaborn as sns
 import muon as mu
 from pathlib import Path
 import os
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 
 adata1_27me3 = sc.read_h5ad('E13_50_1_H3K27me3.h5ad')
 adata1_27ac  = sc.read_h5ad('E13_50_1_H3K27ac.h5ad')
 adata1_27me3.obsm['spatial'] = adata1_27me3.obsm['spatial_local'].copy()
 adata1_27ac.obsm['spatial'] = adata1_27ac.obsm['spatial_local'].copy()
 
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+
 
 sc.pp.normalize_total(adata1_27me3)
 sc.pp.log1p(adata1_27me3)

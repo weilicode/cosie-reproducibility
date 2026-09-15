@@ -1,6 +1,5 @@
 ## Please refer to https://github.com/kpcoleman/miso for installation
 
-
 from miso.hist_features import get_features
 from miso.utils import *
 from miso import Miso
