@@ -7,17 +7,20 @@ import scanpy as sc
 from SpatialGlue.preprocess import clr_normalize_each_cell, pca, lsi
 import SpatialGlue
 import numpy as np
+import scipy.sparse as sp
+from SpatialGlue.preprocess import construct_neighbor_graph
+from SpatialGlue.SpatialGlue_pyG import Train_SpatialGlue
+from SpatialGlue.preprocess import fix_seed
+
 
 adata1_27me3 = sc.read_h5ad('E13_50_1_H3K27me3.h5ad')
 adata1_27ac  = sc.read_h5ad('E13_50_1_H3K27ac.h5ad')
-
 adata1_27me3.obsm['spatial'] = adata1_27me3.obsm['spatial_local'].copy()
 adata1_27ac.obsm['spatial'] = adata1_27ac.obsm['spatial_local'].copy()
 
 data_type = 'embryo'
 
 # Fix random seed
-from SpatialGlue.preprocess import fix_seed
 random_seed = 2022
 fix_seed(random_seed)
 
@@ -38,8 +41,7 @@ sc.pp.scale(adata1_27ac)
 adata1_27ac_high =  adata1_27ac[:, adata1_27ac.var['highly_variable']]
 adata1_27ac.obsm['feat'] = pca(adata1_27ac_high, n_comps=50)
 
-import numpy as np
-import scipy.sparse as sp
+
 
 # ATAC
 adata1_27ac = adata1_27ac[adata1_27ac.obs_names].copy()
@@ -74,12 +76,10 @@ if "X_lsi" not in adata1_27me3.obsm_keys():
     lsi(adata1_27me3, use_highly_variable=False, n_components=51)
 
 adata1_27me3.obsm["feat"] = adata1_27me3.obsm["X_lsi"].copy()
-from SpatialGlue.preprocess import construct_neighbor_graph
 data = construct_neighbor_graph(adata1_27ac, adata1_27me3, datatype=data_type)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # define model
-from SpatialGlue.SpatialGlue_pyG import Train_SpatialGlue
 model = Train_SpatialGlue(data, datatype=data_type, device=device)
 
 # train model

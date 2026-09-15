@@ -2,9 +2,7 @@
 
 
 import sys, os
-
 import numpy as np
-# from umap import UMAP
 import time
 import torch
 import matplotlib.pyplot as plt
@@ -15,8 +13,6 @@ import scipy.io as sio
 from os.path import join
 import h5py
 import warnings
-
-
 import scmomat 
 from scmomat import preprocess
 from sklearn.cluster import KMeans

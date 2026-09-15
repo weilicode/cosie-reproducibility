@@ -3,10 +3,8 @@
 
 import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
-
 import scanpy as sc
 from os.path import join
-
 import pickle
 import numpy as np
 import time
@@ -21,7 +19,6 @@ from sklearn.preprocessing import LabelEncoder
 import pandas as pd
 from sklearn.decomposition import PCA
 from typing import List, Optional
-
 import torch
 from torch import Tensor
 from sklearn.utils.extmath import randomized_svd

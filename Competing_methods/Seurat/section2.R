@@ -5,6 +5,7 @@ library(Seurat)
 library(ggplot2)
 library(Matrix)
 
+
 get_mat <- function(sce) {
   mat <- t(sce$X)
   mat <- as(mat, "dgCMatrix")
