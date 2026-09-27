@@ -1,24 +1,10 @@
-import pandas as pd
-import anndata as ad
-from sklearn.decomposition import IncrementalPCA
-from tqdm import tqdm
-import gc
-import joblib
-import pickle
 import numpy as np
-import seaborn as sns
 import scanpy as sc
-import symphonypy as sp
 import matplotlib.pyplot as plt
 import os
-from scipy.spatial import cKDTree
-from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
-import pandas as pd
-from scipy.stats import pearsonr, spearmanr
-from matplotlib.cm import get_cmap
-from matplotlib import patches
-from pandas.api.types import CategoricalDtype
+from matplotlib import patches, cm
 from matplotlib.colors import to_rgb
+from pandas.api.types import CategoricalDtype
 
 
 def plot_histology_clusters(
@@ -227,14 +213,7 @@ def assign_group_from_clusters(adata, cluster_key, group_dict, new_key="group_la
 
 
 if __name__ == "__main__":
-    
-    adata_adt = sc.read_h5ad('./Fig7_data/adata_P24_LUAD_Visium_adt_istar.h5ad')
-    adata_pre = sc.read_h5ad('./Fig7_data/P24_virtual_prediction.h5ad')
-    assigned_labels = np.load('./Fig7_data/adata_P24_LUAD_HE_mapping_assigned_labels.npy')
-    adata_pre.obsm['spatial'] = adata_adt.obsm['spatial'].copy()
-    adata_pre.obs['labels'] = assigned_labels.copy()
-    
-    
+    base_adata = sc.read_h5ad("./Fig7_data/adata_P24_LUAD_Visium_adt_istar.h5ad")
     group_dict = {
         "Macrophages": [11],
         "Bronchus": [3],
@@ -245,54 +224,34 @@ if __name__ == "__main__":
         "Fibrous tissue": [0,12,22],
         "Lymphoid aggregates": [24],
     }
-    
-    colormap = [
-        [255, 127, 14],   # Macrophages
-        [188, 189, 34],  # Bronchus
-        [220, 20, 60], # Vessels
-        [173, 216, 230], # Normal lung
-        [77, 175, 74],   # Pneumocyte
-        [148, 103, 189],   # Tumor
-        [247, 182, 210], # Fibrous tissue
-        [139, 69, 19],   # Lymphoid aggregates
-        [0, 191, 255],   # Fibrous+tumor
-    ]
-    
-    legend_labels = [
-        f"{name} (clusters {','.join(map(str, clusters))})"
-        for name, clusters in group_dict.items()
-    ]
-    
-    cluster_key = "labels"        # original cluster ID
-    group_key   = "transferred_labels"        # After mapping
-    
-    
-    group_labels = assign_group_from_clusters(
-            adata_pre,
-            cluster_key=cluster_key,
-            group_dict=group_dict,
-            new_key=group_key,
-        )
-    
-    visualize_superpixel_from_adata(
-            adata_pre,
-            obs_key=group_key,
+    colormap = [[255,127,14],[188,189,34],[220,20,60],[173,216,230],[77,175,74],[148,103,189],[247,182,210],[139,69,19]]
+    legend_labels = [f"{k} (clusters {','.join(map(str, v))})" for k, v in group_dict.items()]
+    label_files = {
+        "HE": "./Fig7_data/adata_P24_LUAD_HE_mapping_assigned_labels.npy",
+        "RNA": "./Fig7_data/adata_P24_LUAD_RNA_mapping_assigned_labels.npy",
+        "protein": "./Fig7_data/adata_P24_LUAD_protein_mapping_assigned_labels.npy",
+    }
+    out_dir = "./Fig7_virtual_annotation"
+    os.makedirs(out_dir, exist_ok=True)
+
+    for name, path in label_files.items():
+        labels = np.load(path)
+        if len(labels) != base_adata.n_obs:
+            raise ValueError(f"{name}: label length {len(labels)} != n_obs {base_adata.n_obs}")
+        adata = base_adata.copy()
+        adata.obs["labels"] = labels.astype(int)
+        assign_group_from_clusters(adata, cluster_key="labels", group_dict=group_dict, new_key="transferred_labels")
+        visualize_superpixel_from_adata(
+            adata,
+            obs_key="transferred_labels",
             colormap=colormap,
             legend_labels=legend_labels,
+            remove_legend = True,
             swap_xy=False,
             figscale=100,
-            save_path='P24_HE_label_transfer.jpg',
+            save_path=os.path.join(out_dir, f"P24_{name}_virtual_annotation.jpg"),
+            title=f"P24 {name} virtual annotation",
         )
-    
-    
-    
-    
-    
-    
-    
-
-
-
 
 
 

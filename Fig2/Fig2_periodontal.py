@@ -10,7 +10,8 @@ from sklearn.preprocessing import MinMaxScaler
 from anndata import AnnData
 import anndata as ad
 from sklearn.preprocessing import normalize
-
+from matplotlib import cm
+from matplotlib.colors import to_rgb
 
 def cluster_and_visualize_superpixel(
     final_embeddings,
@@ -179,7 +180,7 @@ def cluster_and_visualize_superpixel(
             figscale = figscale,
             remove_title = remove_title,
             remove_legend = remove_legend,
-            remove_spine=remove_legend, 
+            remove_spine=remove_spine, 
         )
 
     return cluster_labels

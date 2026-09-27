@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.savefig(
-        "./Immune_subtype_box_clean.jpg",
+        "./Immune_subtype_box.jpg",
         bbox_inches="tight",
     )
     plt.show()

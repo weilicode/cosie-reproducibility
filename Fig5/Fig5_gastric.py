@@ -10,7 +10,8 @@ from sklearn.preprocessing import MinMaxScaler
 from anndata import AnnData
 import anndata as ad
 from sklearn.preprocessing import normalize
-
+from matplotlib import cm
+from matplotlib.colors import to_rgb
 
 
 def cluster_and_visualize_superpixel(
@@ -180,7 +181,7 @@ def cluster_and_visualize_superpixel(
             figscale = figscale,
             remove_title = remove_title,
             remove_legend = remove_legend,
-            remove_spine=remove_legend, 
+            remove_spine=remove_spine, 
         )
 
     return cluster_labels
@@ -543,9 +544,10 @@ if __name__ == "__main__":
                                                      dpi = 500,
                                                      figscale = 220)
 
+    
+    
     ## Virtual prediction
     adata1_protein_imputed = sc.read_h5ad('./Fig5_data/COSIE_result/adata1_protein_imputed.h5ad')
-    adata2_gene_imputed = sc.read_h5ad('./Fig5_data/COSIE_result/adata2_rna_imputed.h5ad')
     adata1_protein_imputed_norm = adata1_protein_imputed.copy()
     adata2_adt_norm = adata2_adt.copy()
     adata1_protein_imputed_norm.X = np.arcsinh(adata1_protein_imputed_norm.X / 5)   ### For COMET data

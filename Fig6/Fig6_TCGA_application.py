@@ -13,10 +13,10 @@ from sklearn.preprocessing import normalize
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pickle
-from scipy.stats import wilcoxon
 import pickle
 import matplotlib as mpl
-
+from matplotlib import cm
+from matplotlib.colors import to_rgb
 
 def cluster_and_visualize_superpixel(
     final_embeddings,
@@ -185,7 +185,7 @@ def cluster_and_visualize_superpixel(
             figscale = figscale,
             remove_title = remove_title,
             remove_legend = remove_legend,
-            remove_spine=remove_legend, 
+            remove_spine=remove_spine, 
         )
 
     return cluster_labels
@@ -758,8 +758,6 @@ def highlight_joint_clusters_all_sections(
 
 if __name__ == "__main__":
     file_path = './Fig6_data/TCGA_data'
-    # adata1_rna = sc.read_h5ad('./COSIE_result_4sections/adata4_gene_imputed.h5ad')
-    # adata1_rna.var_names_make_unique()
     adata1_rna_ori = sc.read_h5ad('./Fig6_data/adata_P11_LUAD_Visium_adt_istar.h5ad')
     adata1_he = sc.AnnData(X=adata1_rna_ori.obsm['UNI_feature'])
     adata1_he.obsm['spatial'] = adata1_rna_ori.obsm['spatial'].copy()

@@ -17,11 +17,11 @@ if __name__ == "__main__":
     plot_df = pd.concat([
         pd.DataFrame({
             "Metric": "ARI",
-            "Value": clustering_result["ari_merged"].values
+            "Value": clustering_result["ari"].values
         }),
         pd.DataFrame({
             "Metric": "NMI",
-            "Value": clustering_result["nmi_merged"].values
+            "Value": clustering_result["nmi"].values
         })
     ], ignore_index=True)
     
@@ -237,28 +237,3 @@ if __name__ == "__main__":
     plt.show()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###
